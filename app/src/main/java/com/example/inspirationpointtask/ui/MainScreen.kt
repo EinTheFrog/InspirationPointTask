@@ -1,6 +1,5 @@
 package com.example.inspirationpointtask.ui
 
-import android.app.ActionBar.Tab
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -9,7 +8,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
-import androidx.compose.material.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
@@ -21,17 +19,24 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.core.text.isDigitsOnly
+import com.example.inspirationpointtask.R
 import com.example.inspirationpointtask.ui.theme.InspirationPointTaskTheme
 
 @Composable
 fun MainScreen(viewModel: MainScreenViewModel) {
+    Box {
+        Table(viewModel = viewModel)
+    }
+}
+
+@Composable
+fun Table(viewModel: MainScreenViewModel) {
     val tableValues = viewModel.tableState.collectAsState().value
 
     var participantWidth by remember { mutableStateOf(0) }
@@ -41,7 +46,7 @@ fun MainScreen(viewModel: MainScreenViewModel) {
     var placeWidth by remember { mutableStateOf(0) }
 
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         TitlesRow(
@@ -69,16 +74,25 @@ fun MainScreen(viewModel: MainScreenViewModel) {
             )
 
             val scoreWidthInDp = with(LocalDensity.current) { scoreWidth.toDp() }
-            ScoreColumn(modifier = Modifier
-                .fillMaxHeight()
-                .width(scoreWidthInDp))
+            ScoreColumn(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(scoreWidthInDp),
+                calculateRowScore = { row ->
+                    viewModel.calculateRowScore(row = row)
+                }
+            )
             val placeWidthInDp = with(LocalDensity.current) { placeWidth.toDp() }
-            PlaceColumn(modifier = Modifier
-                .fillMaxHeight()
-                .width(placeWidthInDp))
+            PlaceColumn(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(placeWidthInDp),
+                calculateRowPlace = { row ->
+                    viewModel.calculateRowPlace(row)
+                }
+            )
         }
     }
-
 }
 
 @Composable
@@ -110,10 +124,10 @@ fun TitlesRow(
             }
         }
         TableCell(modifier = Modifier.onGloballyPositioned { scoreWidthCallBack(it.size.width) }) {
-            Text(text = "Сумма очков")
+            Text(text = stringResource(id = R.string.score))
         }
         TableCell(modifier = Modifier.onGloballyPositioned { placeWidthCallBack(it.size.width) }) {
-            Text(text = "Место")
+            Text(text = stringResource(id = R.string.place))
         }
     }
 }
@@ -123,7 +137,7 @@ fun ParticipantsColumn(modifier: Modifier = Modifier, widthCallBack: (Int) -> Un
     Column(modifier = modifier.onGloballyPositioned { widthCallBack(it.size.width) }) {
         for (i in 1..7) {
             TableCell(modifier = Modifier.weight(1f)) {
-                Text(text = "Участник $i")
+                Text(text = stringResource(id = R.string.participant, i))
             }
         }
     }
@@ -197,6 +211,9 @@ fun CustomTextField(
     val defaultColor = MaterialTheme.colors.onBackground
     val errorColor = MaterialTheme.colors.error
     var textColor by remember { mutableStateOf(defaultColor) }
+
+    val unallowableToast = stringResource(id = R.string.unallowable_value)
+
     BasicTextField(
         modifier = Modifier
             .focusRequester(focusRequester),
@@ -212,7 +229,7 @@ fun CustomTextField(
             if (newValue.length <= 1) {
                 updateTable(row, column, newValue)
                 if (newValue.length == 1) {
-                    if (newValue.isDigitsOnly() && newValue.toInt() <= 5) {
+                    if (valueIsAllowed(newValue)) {
                         textColor = defaultColor
                         val nextFocusRequesterIndex = calculateNextFocusRequesterIndex(
                             row = row,
@@ -223,7 +240,7 @@ fun CustomTextField(
                         }
                     } else {
                         textColor = errorColor
-                        Toast.makeText(context, "Недопустимое значение", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, unallowableToast, Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -241,26 +258,32 @@ private fun calculateNextFocusRequesterIndex(row: Int, column: Int): Int {
 }
 
 @Composable
-fun ScoreColumn(modifier: Modifier = Modifier) {
+fun ScoreColumn(
+    modifier: Modifier = Modifier,
+    calculateRowScore: (Int) -> Int
+) {
     Column(modifier = modifier) {
-        for (i in 1..7) {
+        for (i in 0..6) {
             TableCell(modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)) {
-                Text(text = "")
+                Text(text = calculateRowScore(i).toString())
             }
         }
     }
 }
 
 @Composable
-fun PlaceColumn(modifier: Modifier = Modifier) {
+fun PlaceColumn(
+    modifier: Modifier = Modifier,
+    calculateRowPlace: (Int) -> Int
+) {
     Column(modifier = modifier) {
-        for (i in 1..7) {
+        for (i in 0..6) {
             TableCell(modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)) {
-                Text(text = "")
+                Text(text = calculateRowPlace(i).toString())
             }
         }
     }

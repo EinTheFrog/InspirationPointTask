@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">InspirationPointTask</string>
+    <string name="score">Сумма очков</string>
+    <string name="place">Место</string>
+    <string name="participant">Участник %d</string>
+    <string name="unallowable_value">Недопустимое значение</string>
 </resources>
