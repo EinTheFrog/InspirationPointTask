@@ -1,5 +1,8 @@
 package com.example.inspirationpointtask.ui
 
+import android.app.ActionBar.Tab
+import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
@@ -16,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
@@ -152,33 +156,26 @@ fun ValuesTable(
                 for (j in 0..6) {
                     val focusRequester = FocusRequester()
                     focusRequesterList.add(focusRequester)
-                    TableCell(modifier = Modifier.fillMaxHeight().weight(1f)) {
-                        BasicTextField(
+                    if (i == j) {
+                        TableCell(
                             modifier = Modifier
-                                .focusRequester(focusRequester),
-                            textStyle = TextStyle(
-                                color = MaterialTheme.colors.onBackground,
-                                fontSize = MaterialTheme.typography.body1.fontSize,
-                                textAlign = TextAlign.Center
-                            ),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            value = tableValues.cells[i][j],
-                            onValueChange = { newValue: String ->
-                                if (newValue.length <= 1) {
-                                    updateTable(i, j, newValue)
-                                    val hasNextCell = j < 6 || i < 6
-                                    if (
-                                        hasNextCell
-                                        && newValue.length == 1
-                                        && newValue.isDigitsOnly()
-                                        && newValue.toInt() <= 5
-                                    ) {
-                                        focusRequesterList[i * 7 + j + 1].requestFocus()
-                                    }
-                                }
-                            }
+                                .fillMaxHeight()
+                                .weight(1f)
+                                .background(MaterialTheme.colors.onBackground)
                         )
+                    } else {
+                        TableCell(modifier = Modifier
+                            .fillMaxHeight()
+                            .weight(1f)) {
+                            CustomTextField(
+                                focusRequester = focusRequester,
+                                row = i,
+                                column = j,
+                                tableValues = tableValues,
+                                updateTable = updateTable,
+                                focusRequesterList = focusRequesterList
+                            )
+                        }
                     }
                 }
             }
@@ -187,10 +184,69 @@ fun ValuesTable(
 }
 
 @Composable
+fun CustomTextField(
+    focusRequester: FocusRequester,
+    row: Int,
+    column: Int,
+    tableValues: TableValues,
+    updateTable: (Int, Int, String) -> Unit,
+    focusRequesterList: List<FocusRequester>
+) {
+    val context = LocalContext.current
+
+    val defaultColor = MaterialTheme.colors.onBackground
+    val errorColor = MaterialTheme.colors.error
+    var textColor by remember { mutableStateOf(defaultColor) }
+    BasicTextField(
+        modifier = Modifier
+            .focusRequester(focusRequester),
+        textStyle = TextStyle(
+            color = textColor,
+            fontSize = MaterialTheme.typography.body1.fontSize,
+            textAlign = TextAlign.Center
+        ),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        value = tableValues.cells[row][column],
+        onValueChange = { newValue: String ->
+            if (newValue.length <= 1) {
+                updateTable(row, column, newValue)
+                if (newValue.length == 1) {
+                    if (newValue.isDigitsOnly() && newValue.toInt() <= 5) {
+                        textColor = defaultColor
+                        val nextFocusRequesterIndex = calculateNextFocusRequesterIndex(
+                            row = row,
+                            column = column
+                        )
+                        if (nextFocusRequesterIndex in focusRequesterList.indices) {
+                            focusRequesterList[nextFocusRequesterIndex].requestFocus()
+                        }
+                    } else {
+                        textColor = errorColor
+                        Toast.makeText(context, "Недопустимое значение", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    )
+}
+
+private fun calculateNextFocusRequesterIndex(row: Int, column: Int): Int {
+    val nextRow = if (column < 6) row else row + 1
+    val nextColumn = if (column < 6) column + 1 else 0
+    return if (nextRow == nextColumn)
+        calculateNextFocusRequesterIndex(row = nextRow, column = nextColumn)
+    else
+        nextRow * 7 + nextColumn
+}
+
+@Composable
 fun ScoreColumn(modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
         for (i in 1..7) {
-            TableCell(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            TableCell(modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)) {
                 Text(text = "")
             }
         }
@@ -201,7 +257,9 @@ fun ScoreColumn(modifier: Modifier = Modifier) {
 fun PlaceColumn(modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
         for (i in 1..7) {
-            TableCell(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            TableCell(modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)) {
                 Text(text = "")
             }
         }
@@ -215,8 +273,8 @@ fun TableCell(
 ) {
     Box(
         modifier = modifier
-        .border(1.dp, MaterialTheme.colors.onBackground)
-        .padding(8.dp),
+            .border(1.dp, MaterialTheme.colors.onBackground)
+            .padding(8.dp),
         contentAlignment = Alignment.Center
     ) {
         content()
